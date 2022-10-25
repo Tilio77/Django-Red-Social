@@ -141,7 +141,7 @@
 		{% if post.image.count == 1 %}
 		<div class="py-2">
 			{% for img in post.image.all %}
-			<a href="#">
+			<a href="{% url 'social:post-detail' post.pk %}">
 				<img src="{{img.image.url}}" alt="Post image">
 			</a>
 			{% endfor %}
@@ -152,7 +152,7 @@
 		<div class="py-2">
 			<div class="grid grid-cols-3 gap-1">
 				{% for img in post.image.all %}
-				<a href="#">
+				<a href="{% url 'social:post-detail' post.pk %}">
 					<img src="{{img.image.url}}" alt="Post image">
 				</a>
 				{% endfor %}
