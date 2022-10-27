@@ -5,7 +5,10 @@ from django.views.generic.base import View
 from .models import SocialPost, SocialComment
 from django.views.generic.edit import UpdateView, DeleteView
 from django.http import HttpResponseRedirect, HttpResponse
-from .forms import SocialCommentForm
+from .forms import SocialCommentForm, ShareForm
+from django.utils import timezone
+from django.db.models import Q
+from accounts.models import Profile
 
 class PostDetailView(LoginRequiredMixin, View):
     def get(self, request, pk, *args, **kwargs):
@@ -41,6 +44,29 @@ class PostDetailView(LoginRequiredMixin, View):
             'comments': comments
         }
         return render(request, 'pages/social/detail.html', context)
+
+class SharedPostView(View):
+    def post(self, request, pk, *args, **kwargs):
+        original_post = SocialPost.objects.get(pk=pk)
+        form = ShareForm(request.POST)
+
+        if form.is_valid():
+            new_post = SocialPost(
+                shared_body = self.request.POST.get('body'),
+                body = original_post.body,
+                author = original_post.author,
+                created_on = original_post.created_on,
+                shared_user = request.user,
+                shared_on = timezone.now(),
+            )
+            new_post.save()
+
+            for img in original_post.image.all():
+                new_post.image.add(img)
+
+            new_post.save()
+
+        return redirect('home')
 
 class PostEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model=SocialPost
@@ -148,7 +174,6 @@ class AddCommentLike(LoginRequiredMixin, View):
         next = request.POST.get('next', '/')
         return HttpResponseRedirect(next)
 
-
 class AddCommentDislike(LoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
         comment = SocialComment.objects.get(pk=pk)
@@ -212,3 +237,13 @@ class CommentEditView(UpdateView):
     def get_success_url(self):
         pk = self.kwargs['post_pk']
         return reverse_lazy('social:post-detail', kwargs={'pk':pk})
+
+class UserSearch(View):
+    def get(self, request, *args, **kwargs):
+        query = self.request.GET.get('query')
+        profile_list = Profile.objects.filter(Q(user__username__icontains=query))
+
+        context = {
+            'profile_list':profile_list
+        }
+        return render(request, 'pages/social/search.html', context)
